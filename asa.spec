@@ -3,6 +3,7 @@
 # - description
 # - cleanups :)
 # - /usr/lib vs /usr/lib64 - need patch!
+# - run from user jabber script or patch,
 
 %include	/usr/lib/rpm/macros.perl
 Summary:	Jabber server component agent for sending SMS messages
