@@ -1,0 +1,11 @@
+--- asa-0.1.4/config.xml~	2005-02-15 19:32:13.676630232 +0100
++++ asa-0.1.4/config.xml	2005-02-15 19:32:57.012042248 +0100
+@@ -10,7 +10,7 @@
+ 	<!-- agent's verbosity level -->
+ 	<verbose>0</verbose>
+ 	<!-- the directory where plugins for SMS gateways are placed -->
+-	<plugin_dir>/usr/lib/jabber/asa/plugins/</plugin_dir>
++	<plugin_dir>/usr/lib64/jabber/asa/plugins/</plugin_dir>
+ 	<!-- a filename prefix for files containing per-user phone numbers MLDBM/SDB database -->
+ 	<users_numbers_file>/var/lib/jabber/asa/storage/numbers-storage.mldbm</users_numbers_file>
+ 	<!-- above hash/file access cache size, higher values improve performance -->
