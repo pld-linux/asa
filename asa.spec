@@ -48,7 +48,6 @@ modularnej budowie opartej na wtyczkach.
 %if "%{_lib}" == "lib64"
 %patch1 -p1
 %endif
-%patch2 -p1
 
 %install
 rm -rf $RPM_BUILD_ROOT
