@@ -1,15 +1,13 @@
 #
 # TODO:
-# - cleanups :)
-# - run from user jabber script or patch,
-# - working init script,
+# - more clean init script ? (especially asa.sh),
 
 %include	/usr/lib/rpm/macros.perl
 Summary:	Jabber server component agent for sending SMS messages
 Summary(pl):	Komponent serwera Jabbera do wysy³ania wiadomo¶ci SMS
 Name:		asa
 Version:	0.1.4
-Release:	0.9
+Release:	1
 License:	GPL
 Group:		Applications/Communications
 Source0:	http://www.apatsch.wroc.biz/asa/%{name}-%{version}.tar.gz
@@ -27,6 +25,8 @@ Requires:	jabberd >= 1.4
 Requires:	perl-libwww
 Requires:	perl-Unicode-Lite
 Requires:	perl-Crypt-SSLeay
+Requires:	perl-Unicode-String
+Requires:	perl-Unicode-Map
 BuildArch:	noarch
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
