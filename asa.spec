@@ -4,7 +4,7 @@
 # - cleanups :)
 # - /usr/lib vs /usr/lib64 - need patch!
 
-%include        /usr/lib/rpm/macros.perl
+%include	/usr/lib/rpm/macros.perl
 Summary:	Jabber server component agent for sending SMS messages
 Summary(pl):	Komponent serwera Jabbera do wysy³ania wiadomo¶ci SMS
 Name:		asa
@@ -17,7 +17,7 @@ Source0:	http://www.apatsch.wroc.biz/asa/%{name}-%{version}.tar.gz
 Source1:	jabber-asa-transport.init
 Patch0:		%{name}-PLD.patch
 URL:		http://www.apatsch.wroc.biz/asa/
-BuildRequires:  rpm-perlprov
+BuildRequires:	rpm-perlprov
 Requires(pre):	jabber-common
 Requires(post,preun):	/sbin/chkconfig
 Requires(post):	/usr/bin/perl
