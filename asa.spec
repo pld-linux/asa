@@ -1,8 +1,8 @@
 #
 # TODO:
-# - spec filename vs Name
 # - description
 # - cleanups :)
+# - /usr/lib vs /usr/lib64 - need patch!
 
 %include        /usr/lib/rpm/macros.perl
 Summary:	Jabber server component agent for sending SMS messages
@@ -17,7 +17,6 @@ Source0:	http://www.apatsch.wroc.biz/asa/%{name}-%{version}.tar.gz
 Source1:	jabber-asa-transport.init
 Patch0:		%{name}-PLD.patch
 URL:		http://www.apatsch.wroc.biz/asa/
-BuildRequires:	NAME-FIX
 BuildRequires:  rpm-perlprov
 Requires(pre):	jabber-common
 Requires(post,preun):	/sbin/chkconfig
@@ -43,11 +42,12 @@ modularnej budowie opartej na wtyczkach.
 
 %install
 rm -rf $RPM_BUILD_ROOT
-install -d $RPM_BUILD_ROOT{%{_sysconfdir}/jabber,%{_sbindir},/etc/rc.d/init.d,/var/lib/jabber/asa,{plugins,storage}}
+install -d $RPM_BUILD_ROOT{%{_sysconfdir}/jabber,%{_sbindir},/etc/rc.d/init.d,/var/lib/jabber/asa/storage,%{_libdir}/jabber/asa/plugins}
 
-install asa.xml $RPM_BUILD_ROOT%{_sysconfdir}/jabber/asa.xml
+install config.xml $RPM_BUILD_ROOT%{_sysconfdir}/jabber/asa.xml
 install ApaSMSAgent.pl $RPM_BUILD_ROOT%{_sbindir}
 install %{SOURCE1} $RPM_BUILD_ROOT/etc/rc.d/init.d/jabber-asa-transport
+install plugins/*.pl $RPM_BUILD_ROOT/%{_libdir}/jabber/asa/plugins/
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -82,3 +82,4 @@ fi
 %attr(640,root,jabber) %config(noreplace) %verify(not size mtime md5) %{_sysconfdir}/jabber/asa.xml
 %attr(754,root,root) /etc/rc.d/init.d/jabber-asa-transport
 %attr(770,root,jabber) /var/lib/jabber/asa
+%attr(755,root,root) %{_libdir}/jabber/asa/plugins/*
