@@ -1,0 +1,62 @@
+diff -ruN asa-0.1.4.old/ApaSMSAgent.pl asa-0.1.4/ApaSMSAgent.pl
+--- asa-0.1.4.old/ApaSMSAgent.pl	2005-02-11 13:47:10.167567640 +0100
++++ asa-0.1.4/ApaSMSAgent.pl	2005-02-11 13:48:14.599772456 +0100
+@@ -5,7 +5,7 @@
+ # optimizations/cleanups for faster and saner, strict code 
+ 
+ use constant VERSION		=> "0.1.4";
+-use constant CONFIG_FILE	=> "config.xml";
++use constant CONFIG_FILE	=> "/etc/jabber/asa.xml";
+ use constant DEVEL_RUN		=> 0; # useful when testing, things are seen as 'away' in DEVEL_RUN mode
+ 
+ use XML::Stream; # for config files, etc
+diff -ruN asa-0.1.4.old/config.xml asa-0.1.4/config.xml
+--- asa-0.1.4.old/config.xml	2005-02-11 13:47:10.168567488 +0100
++++ asa-0.1.4/config.xml	2005-02-11 13:51:19.518660512 +0100
+@@ -4,19 +4,19 @@
+ 	<!-- server's address to connect to as a component -->
+ 	<server>127.0.0.1</server>
+ 	<!-- server port to connect to -->
+-	<port>1234567</port>
++	<port>5347</port>
+ 	<!-- component authentication password -->
+-	<password></password>
++	<password>secret</password>
+ 	<!-- agent's verbosity level -->
+-	<verbose>4</verbose>
++	<verbose>0</verbose>
+ 	<!-- the directory where plugins for SMS gateways are placed -->
+-	<plugin_dir>./plugins/</plugin_dir>
++	<plugin_dir>/var/lib/jabber/asa/plugins/</plugin_dir>
+ 	<!-- a filename prefix for files containing per-user phone numbers MLDBM/SDB database -->
+-	<users_numbers_file>./storage/numbers-storage.mldbm</users_numbers_file>
++	<users_numbers_file>/var/lib/jabber/asa/storage/numbers-storage.mldbm</users_numbers_file>
+ 	<!-- above hash/file access cache size, higher values improve performance -->
+ 	<numbers_tiehash_cache>1024K</numbers_tiehash_cache>
+ 	<!-- a filename prefix for files containing per-user priority preferences MLDBM/SDB database -->
+-	<users_prio_prefs_file>./storage/prio-prefs-storage.mldbm</users_prio_prefs_file>
++	<users_prio_prefs_file>/var/lib/jabber/asa/storage/prio-prefs-storage.mldbm</users_prio_prefs_file>
+ 	<!-- above hash/file access cache size, higher values improve performance -->
+ 	<prio_prefs_tiehash_cache>1024K</prio_prefs_tiehash_cache>
+ 	<!-- ugly list of pretty admins :) -->
+@@ -35,16 +35,16 @@
+ 	<!-- plugins' own options and settings -->
+ 	<plugins>
+ 		<MiastoPlusa>
+-			<accounts_file>./storage/accounts-MiastoPlusa.mldbm</accounts_file>
++			<accounts_file>/var/lib/jabber/asa/storage/accounts-MiastoPlusa.mldbm</accounts_file>
+ 		</MiastoPlusa>
+ 		<IdeaMbox>
+-			<accounts_file>./storage/accounts-IdeaMbox.mldbm</accounts_file>
++			<accounts_file>/var/lib/jabber/asa/storage/accounts-IdeaMbox.mldbm</accounts_file>
+ 		</IdeaMbox>
+ 		<EraOmnix_Podstawowa>
+-			<accounts_file>./storage/accounts-EraOmnix_Podstawowa.mldbm</accounts_file>
++			<accounts_file>/var/lib/jabber/asa/storage/accounts-EraOmnix_Podstawowa.mldbm</accounts_file>
+ 		</EraOmnix_Podstawowa>
+ 		<EraOmnix_Platna>
+-			<accounts_file>./storage/accounts-EraOmnix_Platna.mldbm</accounts_file>
++			<accounts_file>/var/lib/jabber/asa/storage/accounts-EraOmnix_Platna.mldbm</accounts_file>
+ 		</EraOmnix_Platna>
+ 	</plugins>
+ </config>
