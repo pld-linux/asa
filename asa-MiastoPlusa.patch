@@ -1,0 +1,11 @@
+--- asa-0.1.4/plugins/MiastoPlusa.pl~	2005-01-20 21:57:02.000000000 +0100
++++ asa-0.1.4/plugins/MiastoPlusa.pl	2005-02-17 16:41:01.315811928 +0100
+@@ -7,7 +7,7 @@
+ my $PLUGIN_NAME			= "MiastoPlusa";
+ my $PLUGIN_VERSION		= "0.5";
+ my $DEFAULT_PRIO		= 2;
+-my $DEST_NUMBERS_REGEXP		=  '^\+48(888|880|889|60[0-9]|69[0-9]|50[1-9]|66[0-9])'; # needed like this in //
++my $DEST_NUMBERS_REGEXP		=  '^\+48(888|880|889|60[0-9]|69[0-9]|50[0-9]|66[0-9])'; # needed like this in //
+ 
+ use vars qw ( %MiastoPlusa_accounts );
+ 
