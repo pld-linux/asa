@@ -4,7 +4,7 @@ diff -ruN asa-0.1.4.old/ApaSMSAgent.pl asa-0.1.4/ApaSMSAgent.pl
 @@ -5,7 +5,7 @@
  # optimizations/cleanups for faster and saner, strict code 
  
- use constant VERSION		=> "0.1.4";
+ use constant VERSION		=> "0.1.5";
 -use constant CONFIG_FILE	=> "config.xml";
 +use constant CONFIG_FILE	=> "/etc/jabber/asa.xml";
  use constant DEVEL_RUN		=> 0; # useful when testing, things are seen as 'away' in DEVEL_RUN mode
