@@ -2,8 +2,8 @@
 # TODO:
 # - description
 # - cleanups :)
-# - /usr/lib vs /usr/lib64 - need patch!
 # - run from user jabber script or patch,
+# - working init script,
 
 %include	/usr/lib/rpm/macros.perl
 Summary:	Jabber server component agent for sending SMS messages
@@ -17,6 +17,7 @@ Source0:	http://www.apatsch.wroc.biz/asa/%{name}-%{version}.tar.gz
 # Source0-md5:	e2bdce7a80a758fa02aff2cdc39c66b1
 Source1:	jabber-asa-transport.init
 Patch0:		%{name}-PLD.patch
+Patch1:		%{name}-lib64.patch
 URL:		http://www.apatsch.wroc.biz/asa/
 BuildRequires:	rpm-perlprov
 Requires(pre):	jabber-common
@@ -40,6 +41,10 @@ modularnej budowie opartej na wtyczkach.
 
 %prep
 %setup -q
+%patch0 -p1
+%if "%{_lib}" == "lib64"
+%patch1 -p1
+%endif
 
 %install
 rm -rf $RPM_BUILD_ROOT
