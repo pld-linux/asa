@@ -15,6 +15,7 @@ Group:		Applications/Communications
 Source0:	http://www.apatsch.wroc.biz/asa/%{name}-%{version}.tar.gz
 # Source0-md5:	e2bdce7a80a758fa02aff2cdc39c66b1
 Source1:	jabber-asa-transport.init
+Source2:	%{name}.sh
 Patch0:		%{name}-PLD.patch
 Patch1:		%{name}-lib64.patch
 URL:		http://www.apatsch.wroc.biz/asa/
@@ -55,6 +56,7 @@ install -d $RPM_BUILD_ROOT{%{_sysconfdir}/jabber,%{_sbindir},/etc/rc.d/init.d,/v
 install config.xml $RPM_BUILD_ROOT%{_sysconfdir}/jabber/asa.xml
 install ApaSMSAgent.pl $RPM_BUILD_ROOT%{_sbindir}
 install %{SOURCE1} $RPM_BUILD_ROOT/etc/rc.d/init.d/jabber-asa-transport
+install %{SOURCE2} $RPM_BUILD_ROOT%{_sbindir}
 install plugins/*.pl $RPM_BUILD_ROOT/%{_libdir}/jabber/asa/plugins/
 
 %clean
