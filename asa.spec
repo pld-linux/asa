@@ -1,6 +1,5 @@
 #
 # TODO:
-# - description
 # - cleanups :)
 # - run from user jabber script or patch,
 # - working init script,
@@ -24,6 +23,9 @@ Requires(pre):	jabber-common
 Requires(post,preun):	/sbin/chkconfig
 Requires(post):	/usr/bin/perl
 Requires:	jabberd >= 1.4
+Requires:	perl-libwww
+Requires:	perl-Unicode-Lite
+Requires:	perl-Crypt-SSLeay
 BuildArch:	noarch
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
