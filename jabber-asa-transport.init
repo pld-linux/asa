@@ -27,7 +27,7 @@ case "$1" in
 	# Check if the service is already running?
 	if [ ! -f /var/lock/subsys/jabber-asa-transport ]; then
 		msg_starting "Jabber ASA transport"
-		daemon 
+		daemon asa.sh
 		RETVAL=$?
 		[ $RETVAL -eq 0 ] && touch /var/lock/subsys/jabber-asa-transport
 	else
@@ -38,7 +38,7 @@ case "$1" in
 	# Check if the service is already running?
 	if [ -f /var/lock/subsys/jabber-asa-transport ]; then
 		msg_stopping  "Jabber ASA transport"
-		killproc ile.pl
+		killproc ApaSMSAgent.pl
 		rm -f /var/lock/subsys/jabber-asa-transport
 	else
 		msg_not_running jabber-asa-transport
@@ -50,7 +50,7 @@ case "$1" in
 	exit $?
 	;;
   status)
-	status ile.pl
+	status ApaSMSAgent.pl
 	exit $?
 	;;
   *)
