@@ -64,7 +64,7 @@ rm -rf $RPM_BUILD_ROOT
 if [ -f /etc/jabber/secret ] ; then
 	SECRET=`cat /etc/jabber/secret`
 	if [ -n "$SECRET" ] ; then
-		echo "Updating component authentication secret in ile.xml..."
+		echo "Updating component authentication secret in asa.xml..."
 		perl -pi -e "s/>secret</>$SECRET</" /etc/jabber/asa.xml
 	fi
 fi
