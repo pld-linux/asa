@@ -1,15 +1,3 @@
-diff -ruN asa-0.1.4.old/ApaSMSAgent.pl asa-0.1.4/ApaSMSAgent.pl
---- asa-0.1.4.old/ApaSMSAgent.pl	2005-02-11 13:47:10.167567640 +0100
-+++ asa-0.1.4/ApaSMSAgent.pl	2005-02-11 13:48:14.599772456 +0100
-@@ -5,7 +5,7 @@
- # optimizations/cleanups for faster and saner, strict code 
- 
- use constant VERSION		=> "0.1.5";
--use constant CONFIG_FILE	=> "config.xml";
-+use constant CONFIG_FILE	=> "/etc/jabber/asa.xml";
- use constant DEVEL_RUN		=> 0; # useful when testing, things are seen as 'away' in DEVEL_RUN mode
- 
- use XML::Stream; # for config files, etc
 diff -ruN asa-0.1.4.old/config.xml asa-0.1.4/config.xml
 --- asa-0.1.4.old/config.xml	2005-02-11 13:47:10.168567488 +0100
 +++ asa-0.1.4/config.xml	2005-02-11 13:51:19.518660512 +0100
@@ -60,3 +48,14 @@ diff -ruN asa-0.1.4.old/config.xml asa-0.1.4/config.xml
  		</EraOmnix_Platna>
  	</plugins>
  </config>
+--- asa-0.1.6/ApaSMSAgent.pl~	2005-05-04 21:11:32.303884288 +0200
++++ asa-0.1.6/ApaSMSAgent.pl	2005-05-04 21:13:33.583446992 +0200
+@@ -5,7 +5,7 @@
+ # optimizations/cleanups for faster and saner, strict code 
+ 
+ use constant VERSION		=> "0.1.6";
+-use constant CONFIG_FILE	=> "config.xml";
++use constant CONFIG_FILE	=> "/etc/jabber/asa.xml";
+ use constant DEVEL_RUN		=> 0; # useful when testing, things are seen as 'away' in DEVEL_RUN mode
+ 
+ use XML::Stream; # for config files, etc
