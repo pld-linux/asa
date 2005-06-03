@@ -91,6 +91,7 @@ fi
 %attr(755,root,root) %{_sbindir}/*
 %attr(640,root,jabber) %config(noreplace) %verify(not size mtime md5) %{_sysconfdir}/jabber/asa.xml
 %attr(754,root,root) /etc/rc.d/init.d/jabber-asa-transport
-%attr(770,root,jabber) /var/lib/jabber/asa
+%attr(770,root,jabber) /var/lib/jabber
+%dir %{_libdir}/jabber
 %dir %{_libdir}/jabber/asa
 %attr(755,root,root) %{_libdir}/jabber/asa/plugins
