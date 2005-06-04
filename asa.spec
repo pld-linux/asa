@@ -7,7 +7,7 @@ Summary:	Jabber server component agent for sending SMS messages
 Summary(pl):	Komponent serwera Jabbera do wysy³ania wiadomo¶ci SMS
 Name:		asa
 Version:	0.1.6
-Release:	1
+Release:	1.2
 License:	GPL
 Group:		Applications/Communications
 Source0:	http://www.apatsch.wroc.biz/asa/%{name}-%{version}.tar.gz
@@ -16,6 +16,7 @@ Source1:	jabber-asa-transport.init
 Source2:	%{name}.sh
 Patch0:		%{name}-PLD.patch
 Patch1:		%{name}-lib64.patch
+Patch2:		%{name}-userrun.patch
 URL:		http://www.apatsch.wroc.biz/asa/
 BuildRequires:	rpm-perlprov
 Requires(pre):	jabber-common
@@ -48,6 +49,7 @@ modularnej budowie opartej na wtyczkach.
 %if "%{_lib}" == "lib64"
 %patch1 -p1
 %endif
+%patch2 -p1
 
 %install
 rm -rf $RPM_BUILD_ROOT
