@@ -1,0 +1,19 @@
+diff -urN asa-0.1.6.orig/ApaSMSAgent.pl asa-0.1.6/ApaSMSAgent.pl
+--- asa-0.1.6.orig/ApaSMSAgent.pl	2005-04-22 12:23:56.000000000 +0200
++++ asa-0.1.6/ApaSMSAgent.pl	2005-06-04 10:10:01.000000000 +0200
+@@ -19,6 +19,15 @@
+ use Time::HiRes qw(gettimeofday); # benchmarking ;)
+ use strict;
+ 
++# set UID/GID
++if ($< == 0) {
++    my ($uid, $gid) = (getpwnam("jabber"))[2,3];
++    $)="$gid $gid" or die "Cannot set EGID and groups";
++    $(=$gid or die "Cannot set GID";;
++    $>=$uid or die "Cannot set EUID";
++    $<=$> or die "Cannot set UID";;
++}
++
+ # set up Stop to be run if someone kills us
+ $SIG{KILL} = \&Stop;
+ $SIG{TERM} = \&Stop;
