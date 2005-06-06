@@ -1,2 +1,2 @@
 #!/bin/sh
-/usr/sbin/ApaSMSAgent.pl 2&1> /dev/null &
+/usr/sbin/ApaSMSAgent.pl >/dev/null 2>&1 &
