@@ -12,30 +12,29 @@ License:	GPL
 Group:		Applications/Communications
 Source0:	http://www.apatsch.wroc.biz/asa/%{name}-%{version}.tar.gz
 # Source0-md5:	2a754e9ab1220f79060a68a46a76cc6c
-Source1:	jabber-asa-transport.init
+Source1:	jabber-%{name}-transport.init
 Source2:	%{name}.sh
 Patch0:		%{name}-PLD.patch
 Patch1:		%{name}-lib64.patch
 Patch2:		%{name}-userrun.patch
 URL:		http://www.apatsch.wroc.biz/asa/
 BuildRequires:	rpm-perlprov
-Requires(pre):	jabber-common
-Requires(post,preun):	/sbin/chkconfig
 Requires(post):	/usr/bin/perl
+Requires(post,preun):	/sbin/chkconfig
+Requires(pre):	jabber-common
 Requires:	jabberd >= 1.4
-Requires:	perl-libwww
-Requires:	perl-Unicode-Lite
 Requires:	perl-Crypt-SSLeay
-Requires:	perl-Unicode-String
+Requires:	perl-Unicode-Lite
 Requires:	perl-Unicode-Map
+Requires:	perl-Unicode-String
+Requires:	perl-libwww
 BuildArch:	noarch
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %description
-ApaSMSAgent - Jabber server component agent for sending
-SMS messages to cellular networks. Targetted at polish users,
-but can be adopted for international use, because of it's
-plugin-based architecture.
+ApaSMSAgent - Jabber server component agent for sending SMS messages
+to cellular networks. Targetted at polish users, but can be adopted
+for international use, because of it's plugin-based architecture.
 
 %description -l pl
 ApaSMSAgent - komponent serwera Jabbera umo¿liwiaj±cy wysy³anie
@@ -91,7 +90,7 @@ fi
 %defattr(644,root,root,755)
 %doc ChangeLog AUTHORS README
 %attr(755,root,root) %{_sbindir}/*
-%attr(640,root,jabber) %config(noreplace) %verify(not size mtime md5) %{_sysconfdir}/jabber/asa.xml
+%attr(640,root,jabber) %config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/jabber/asa.xml
 %attr(754,root,root) /etc/rc.d/init.d/jabber-asa-transport
 %attr(770,root,jabber) /var/lib/jabber
 %dir %{_libdir}/jabber
