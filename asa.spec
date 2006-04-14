@@ -19,9 +19,10 @@ Patch1:		%{name}-lib64.patch
 Patch2:		%{name}-userrun.patch
 URL:		http://www.apatsch.wroc.biz/asa/
 BuildRequires:	rpm-perlprov
+BuildRequires:	rpmbuild(macros) >= 1.268
 Requires(post):	/usr/bin/perl
-Requires(post,preun):	/sbin/chkconfig
 Requires(post):	sed >= 4.0
+Requires(post,preun):	/sbin/chkconfig
 Requires(pre):	jabber-common
 Requires:	jabberd >= 1.4
 Requires:	perl-Crypt-SSLeay
@@ -65,25 +66,19 @@ install plugins/*.pl $RPM_BUILD_ROOT/%{_libdir}/jabber/asa/plugins/
 rm -rf $RPM_BUILD_ROOT
 
 %post
-if [ -f /etc/jabber/secret ] ; then
-	SECRET=`cat /etc/jabber/secret`
+if [ -f %{_sysconfdir}/jabber/secret ] ; then
+	SECRET=`cat %{_sysconfdir}/jabber/secret`
 	if [ -n "$SECRET" ] ; then
 		echo "Updating component authentication secret in asa.xml..."
 		%{__sed} -i -e "s/>secret</>$SECRET</" /etc/jabber/asa.xml
 	fi
 fi
 /sbin/chkconfig --add jabber-asa-transport
-if [ -r /var/lock/subsys/jabber-asa-transport ]; then
-	/etc/rc.d/init.d/jabber-asa-transport restart >&2
-else
-	echo "Run \"/etc/rc.d/init.d/jabber-asa-transport start\" to start Jabber ASA transport."
-fi
+%service jabber-asa-transport restart "Jabber ASA transport"
 
 %preun
 if [ "$1" = "0" ]; then
-	if [ -r /var/lock/subsys/jabber-asa-transport ]; then
-		/etc/rc.d/init.d/jabber-asa-transport stop >&2
-	fi
+	%service jabber-asa-transport stop
 	/sbin/chkconfig --del jabber-asa-transport
 fi
 
