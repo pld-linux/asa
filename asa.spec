@@ -21,6 +21,7 @@ URL:		http://www.apatsch.wroc.biz/asa/
 BuildRequires:	rpm-perlprov
 Requires(post):	/usr/bin/perl
 Requires(post,preun):	/sbin/chkconfig
+Requires(post):	sed >= 4.0
 Requires(pre):	jabber-common
 Requires:	jabberd >= 1.4
 Requires:	perl-Crypt-SSLeay
@@ -68,7 +69,7 @@ if [ -f /etc/jabber/secret ] ; then
 	SECRET=`cat /etc/jabber/secret`
 	if [ -n "$SECRET" ] ; then
 		echo "Updating component authentication secret in asa.xml..."
-		perl -pi -e "s/>secret</>$SECRET</" /etc/jabber/asa.xml
+		%{__sed} -i -e "s/>secret</>$SECRET</" /etc/jabber/asa.xml
 	fi
 fi
 /sbin/chkconfig --add jabber-asa-transport
