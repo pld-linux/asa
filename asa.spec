@@ -60,7 +60,7 @@ install config.xml $RPM_BUILD_ROOT%{_sysconfdir}/jabber/asa.xml
 install ApaSMSAgent.pl $RPM_BUILD_ROOT%{_sbindir}
 install %{SOURCE1} $RPM_BUILD_ROOT/etc/rc.d/init.d/jabber-asa-transport
 install %{SOURCE2} $RPM_BUILD_ROOT%{_sbindir}
-install plugins/*.pl $RPM_BUILD_ROOT/%{_libdir}/jabber/asa/plugins/
+install plugins/*.pl $RPM_BUILD_ROOT%{_libdir}/jabber/asa/plugins/
 
 %clean
 rm -rf $RPM_BUILD_ROOT
