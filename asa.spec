@@ -4,7 +4,7 @@
 
 %include	/usr/lib/rpm/macros.perl
 Summary:	Jabber server component agent for sending SMS messages
-Summary(pl):	Komponent serwera Jabbera do wysy≥ania wiadomo∂ci SMS
+Summary(pl.UTF-8):   Komponent serwera Jabbera do wysy≈Çania wiadomo≈õci SMS
 Name:		asa
 Version:	0.1.7
 Release:	1
@@ -38,10 +38,10 @@ ApaSMSAgent - Jabber server component agent for sending SMS messages
 to cellular networks. Targetted at polish users, but can be adopted
 for international use, because of it's plugin-based architecture.
 
-%description -l pl
-ApaSMSAgent - komponent serwera Jabbera umoøliwiaj±cy wysy≥anie
-wiadomo∂ci SMS do sieci komÛrkowych. Aktualnie obs≥uguje g≥Ûwnie
-polskie sieci, ale z ≥atwo∂ci± moøe zostaÊ rozszerzony o inne dziÍki
+%description -l pl.UTF-8
+ApaSMSAgent - komponent serwera Jabbera umo≈ºliwiajƒÖcy wysy≈Çanie
+wiadomo≈õci SMS do sieci kom√≥rkowych. Aktualnie obs≈Çuguje g≈Ç√≥wnie
+polskie sieci, ale z ≈Çatwo≈õciƒÖ mo≈ºe zostaƒá rozszerzony o inne dziƒôki
 modularnej budowie opartej na wtyczkach.
 
 %prep
