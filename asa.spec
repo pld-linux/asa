@@ -4,7 +4,7 @@
 
 %include	/usr/lib/rpm/macros.perl
 Summary:	Jabber server component agent for sending SMS messages
-Summary(pl.UTF-8):   Komponent serwera Jabbera do wysyłania wiadomości SMS
+Summary(pl.UTF-8):	Komponent serwera Jabbera do wysyłania wiadomości SMS
 Name:		asa
 Version:	0.1.7
 Release:	1
