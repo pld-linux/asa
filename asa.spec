@@ -7,8 +7,7 @@ Summary:	Jabber server component agent for sending SMS messages
 Summary(pl.UTF-8):	Komponent serwera Jabbera do wysyłania wiadomości SMS
 Name:		asa
 Version:	0.1.7
-Release:	1
-Epoch:		1
+Release:	2
 License:	GPL
 Group:		Applications/Communications
 Source0:	http://www.apatsch.wroc.biz/asa/%{name}-%{version}.tar.gz
@@ -55,7 +54,6 @@ modularnej budowie opartej na wtyczkach.
 %if "%{_lib}" == "lib64"
 %patch3 -p1
 %endif
-
 
 %install
 rm -rf $RPM_BUILD_ROOT
