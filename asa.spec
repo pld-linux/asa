@@ -1,6 +1,6 @@
 #
 # TODO:
-# - more clean init script ? (especially asa.sh),
+# - more clean init script ? (especially asa.sh) but usable,
 
 %include	/usr/lib/rpm/macros.perl
 Summary:	Jabber server component agent for sending SMS messages
@@ -8,15 +8,18 @@ Summary(pl.UTF-8):	Komponent serwera Jabbera do wysyłania wiadomości SMS
 Name:		asa
 Version:	0.1.7
 Release:	1
+Epoch:		1
 License:	GPL
 Group:		Applications/Communications
 Source0:	http://www.apatsch.wroc.biz/asa/%{name}-%{version}.tar.gz
 # Source0-md5:	2a754e9ab1220f79060a68a46a76cc6c
 Source1:	jabber-%{name}-transport.init
 Source2:	%{name}.sh
-Patch0:		%{name}-PLD.patch
-Patch1:		%{name}-lib64.patch
+# This patch updates asa to recent version from SVN (kg doesn't releases tarball)
+Patch0:		%{name}-svn-26-05-2007.patch
+Patch1:		%{name}-PLD.patch
 Patch2:		%{name}-userrun.patch
+Patch3:		%{name}-lib64.patch
 URL:		http://www.apatsch.wroc.biz/asa/
 BuildRequires:	rpm-perlprov
 BuildRequires:	rpmbuild(macros) >= 1.268
@@ -47,10 +50,12 @@ modularnej budowie opartej na wtyczkach.
 %prep
 %setup -q
 %patch0 -p1
-%if "%{_lib}" == "lib64"
-%patch1 -p1
-%endif
+%patch1 -p0
 %patch2 -p1
+%if "%{_lib}" == "lib64"
+%patch3 -p1
+%endif
+
 
 %install
 rm -rf $RPM_BUILD_ROOT
