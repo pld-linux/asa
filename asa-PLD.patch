@@ -1,7 +1,6 @@
-diff -ruN asa-0.1.4.old/config.xml asa-0.1.4/config.xml
---- asa-0.1.4.old/config.xml	2005-02-11 13:47:10.168567488 +0100
-+++ asa-0.1.4/config.xml	2005-02-11 13:51:19.518660512 +0100
-@@ -4,19 +4,19 @@
+--- config.xml~	2007-05-26 09:40:05.000000000 +0200
++++ config.xml	2007-05-26 09:42:32.000000000 +0200
+@@ -4,25 +4,24 @@
  	<!-- server's address to connect to as a component -->
  	<server>127.0.0.1</server>
  	<!-- server port to connect to -->
@@ -27,34 +26,43 @@ diff -ruN asa-0.1.4.old/config.xml asa-0.1.4/config.xml
  	<!-- above hash/file access cache size, higher values improve performance -->
  	<prio_prefs_tiehash_cache>1024K</prio_prefs_tiehash_cache>
  	<!-- ugly list of pretty admins :) -->
-@@ -35,16 +35,16 @@
+ 	<admins>
+-		<admin>apatsch@jabber.iron.wroc.biz</admin>
+-		<admin>apatsch@jabber.aster.pl</admin>
++		<admin>admin@jabber.server.somewhere</admin>
+ 	</admins>
+ 	<!-- plugins to load, these are parts of filenames! like MiastoPlusa.pl but w/o .pl -->
+ 	<load>
+@@ -35,16 +34,16 @@
  	<!-- plugins' own options and settings -->
  	<plugins>
  		<MiastoPlusa>
 -			<accounts_file>./storage/accounts-MiastoPlusa.mldbm</accounts_file>
 +			<accounts_file>/var/lib/jabber/asa/storage/accounts-MiastoPlusa.mldbm</accounts_file>
  		</MiastoPlusa>
- 		<IdeaMbox>
--			<accounts_file>./storage/accounts-IdeaMbox.mldbm</accounts_file>
-+			<accounts_file>/var/lib/jabber/asa/storage/accounts-IdeaMbox.mldbm</accounts_file>
- 		</IdeaMbox>
- 		<EraOmnix_Podstawowa>
--			<accounts_file>./storage/accounts-EraOmnix_Podstawowa.mldbm</accounts_file>
-+			<accounts_file>/var/lib/jabber/asa/storage/accounts-EraOmnix_Podstawowa.mldbm</accounts_file>
- 		</EraOmnix_Podstawowa>
- 		<EraOmnix_Platna>
--			<accounts_file>./storage/accounts-EraOmnix_Platna.mldbm</accounts_file>
-+			<accounts_file>/var/lib/jabber/asa/storage/accounts-EraOmnix_Platna.mldbm</accounts_file>
- 		</EraOmnix_Platna>
+ 		<OrangeMbox>
+-			<accounts_file>./storage/accounts-OrangeMbox.mldbm</accounts_file>
++			<accounts_file>/var/lib/jabber/asa/storage/accounts-OrangeMbox.mldbm</accounts_file>
+ 		</OrangeMbox>
+ 		<EraOmnix_Sponsorowana>
+-			<accounts_file>./storage/accounts-EraOmnix_Sponsorowana.mldbm</accounts_file>
++			<accounts_file>/var/lib/jabber/asa/storage/accounts-EraOmnix_Sponsorowana.mldbm</accounts_file>
+ 		</EraOmnix_Sponsorowana>
+ 		<EraOmnix_Multimedialna>
+-			<accounts_file>./storage/accounts-EraOmnix_Multimedialna.mldbm</accounts_file>
++			<accounts_file>/var/lib/jabber/asa/storage/accounts-EraOmnix_Multimedialna.mldbm</accounts_file>
+ 		</EraOmnix_Multimedialna>
  	</plugins>
  </config>
---- asa-0.1.6/ApaSMSAgent.pl~	2005-05-04 21:11:32.303884288 +0200
-+++ asa-0.1.6/ApaSMSAgent.pl	2005-05-04 21:13:33.583446992 +0200
-@@ -5,7 +5,7 @@
+--- ApaSMSAgent.pl~	2007-05-26 09:44:21.000000000 +0200
++++ ApaSMSAgent.pl	2007-05-26 09:48:56.000000000 +0200
+@@ -4,8 +4,8 @@
+ # jabber:x:data+message (nice!) options for plugins and for agent
  # optimizations/cleanups for faster and saner, strict code 
  
- use constant VERSION		=> "0.1.6";
+-use constant VERSION		=> "0.1.6";
 -use constant CONFIG_FILE	=> "config.xml";
++use constant VERSION		=> "0.1.7";
 +use constant CONFIG_FILE	=> "/etc/jabber/asa.xml";
  use constant DEVEL_RUN		=> 0; # useful when testing, things are seen as 'away' in DEVEL_RUN mode
  

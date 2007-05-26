@@ -1,0 +1,913 @@
+diff -ruN asa-0.1.7/ApaSMSAgent.pl asa-svn-26-05-2007/ApaSMSAgent.pl
+--- asa-0.1.7/ApaSMSAgent.pl	2005-04-22 12:23:56.000000000 +0200
++++ asa-svn-26-05-2007/ApaSMSAgent.pl	2007-05-26 09:24:06.000000000 +0200
+@@ -58,7 +58,7 @@
+ };
+ 
+ my $STD_MSG="Hello! I'm ApaSMSAgent ".VERSION."\n".
+-	"Add contacts like +48xxxxxxxxx@".$config{service_name}." to your roster to send them SMS messages.\n".
++	"Add contacts like +xxxxxxxxxxx@".$config{service_name}." to your roster to send them SMS messages.\n".
+ 	"Browse ".$config{service_name}." in your service browser to see available plugins and change their options or register if needed.\n".
+ 	"Available plugins:";
+ foreach my $p (keys %plugins) {
+@@ -303,8 +303,8 @@
+ 		} elsif ($type eq 'set') {
+ 			my $nr=$query_o->GetPrompt();
+ 			# FIXME needs work:
+-			if ($nr=~/[0-9]{11,11}/) {
+-				$nr=~s/^.*([0-9]{11,11}).*$/$1/;
++			if ($nr=~/[0-9]{11,}/) {
++				$nr=~s/^.*?([0-9]{11,}).*?$/$1/;
+ 			} elsif ($nr=~/[0-9]{9,9}/) {
+ 				$nr=~s/^.*([0-9]{9,9}).*$/48$1/;
+ 			} else {
+@@ -405,9 +405,21 @@
+ 				$message->SetBody($b);
+ 				$message->SetType($message_o->GetType());
+ 				$Connection->Send($message);
++			} elsif ($body =~ /^\/stats$/i) {
++				log3("stats from admin $base_from");
++				my $b="Users #".(keys %numbers);
++                my $numbers_count = 0;
++				foreach my $user (keys %numbers) {
++                    $numbers_count += keys %{$numbers{$user}};
++                };
++                $b .= ", numbers #".$numbers_count;
++				$message->SetBody($b);
++				$message->SetType($message_o->GetType());
++				$Connection->Send($message);
+ 			} elsif ($body =~ /^\/help$/i) {
+ 				log3("help from admin $base_from");
+ 				$message->SetBody("/wall or /motd - wall message\n".
++					"/stats - print basic statistic info\n".
+ 					"/DUMPPLUGINS - dump plugins hash\n".
+ 					"/DUMPCONFIG - dump config hash\n".
+ #					"/dumpnumbers - dump numbers hash\n".
+@@ -480,7 +492,7 @@
+ 			};
+ 		};
+ 	} elsif ($to =~ /@/) { # someting with @ :P
+-		if ($to =~ /^\+[0-9]{11}\@/) { # generic nr, good nr 
++		if ($to =~ /^\+(48[0-9]{9}|[0-9]{11,})\@/) { # generic nr, good nr 
+ 			my $nr=$to; $nr=~s/@.+$//;
+ 			if ($type eq 'subscribe') {
+ 				$presence->SetType('subscribe'); # ask him for auth, we need to maintain his list of numbers
+diff -ruN asa-0.1.7/config.xml asa-svn-26-05-2007/config.xml
+--- asa-0.1.7/config.xml	2005-01-14 21:18:13.000000000 +0100
++++ asa-svn-26-05-2007/config.xml	2007-05-26 09:24:23.000000000 +0200
+@@ -28,23 +28,23 @@
+ 	<load>
+ 		<plugin>MiastoPlusa</plugin>
+ 		<plugin>WwwPlusa</plugin>
+-		<plugin>IdeaMbox</plugin>
+-		<plugin>EraOmnix_Podstawowa</plugin>
+-		<plugin>EraOmnix_Platna</plugin>
++		<plugin>OrangeMbox</plugin>
++		<plugin>EraOmnix_Sponsorowana</plugin>
++		<plugin>EraOmnix_Multimedialna</plugin>
+ 	</load>
+ 	<!-- plugins' own options and settings -->
+ 	<plugins>
+ 		<MiastoPlusa>
+ 			<accounts_file>./storage/accounts-MiastoPlusa.mldbm</accounts_file>
+ 		</MiastoPlusa>
+-		<IdeaMbox>
+-			<accounts_file>./storage/accounts-IdeaMbox.mldbm</accounts_file>
+-		</IdeaMbox>
+-		<EraOmnix_Podstawowa>
+-			<accounts_file>./storage/accounts-EraOmnix_Podstawowa.mldbm</accounts_file>
+-		</EraOmnix_Podstawowa>
+-		<EraOmnix_Platna>
+-			<accounts_file>./storage/accounts-EraOmnix_Platna.mldbm</accounts_file>
+-		</EraOmnix_Platna>
++		<OrangeMbox>
++			<accounts_file>./storage/accounts-OrangeMbox.mldbm</accounts_file>
++		</OrangeMbox>
++		<EraOmnix_Sponsorowana>
++			<accounts_file>./storage/accounts-EraOmnix_Sponsorowana.mldbm</accounts_file>
++		</EraOmnix_Sponsorowana>
++		<EraOmnix_Multimedialna>
++			<accounts_file>./storage/accounts-EraOmnix_Multimedialna.mldbm</accounts_file>
++		</EraOmnix_Multimedialna>
+ 	</plugins>
+ </config>
+diff -ruN asa-0.1.7/plugins/EraOmnix_Multimedialna.pl asa-svn-26-05-2007/plugins/EraOmnix_Multimedialna.pl
+--- asa-0.1.7/plugins/EraOmnix_Multimedialna.pl	1970-01-01 01:00:00.000000000 +0100
++++ asa-svn-26-05-2007/plugins/EraOmnix_Multimedialna.pl	2007-05-26 09:25:13.000000000 +0200
+@@ -0,0 +1,181 @@
++use strict;
++use LWP::UserAgent;
++use HTTP::Request::Common qw(GET POST);
++use HTTP::Response;
++use Unicode::Lite;
++
++my $PLUGIN_NAME			= "EraOmnix_Multimedialna";
++my $PLUGIN_VERSION		= "0.3-20051002-kg";
++my $DEFAULT_PRIO		= 5;
++my $DEST_NUMBERS_REGEXP		=  '^\+[0-9]+'; # needed linke this in // good numberz? any, they say
++
++use vars qw ( %EraOmnix_Mult_accounts );
++
++# RULES:
++# 1. ALWAYS, ALWAYS, ALWAYS create new presence/message/iq
++# 2. Create handlers, plugin is named ser.vi.ce/Plugin
++# 3. Provide ALL info into %plugin_data
++
++RegisterEvent('iq','^'.$config{service_name}."/".$PLUGIN_NAME.'$',\&EraOmnix_Mult_InIQ); # for registration
++RegisterEvent('pre_connect','.+',\&EraOmnix_Mult_PreConn); # for loading some data ;)
++
++$plugin_data{$PLUGIN_NAME}->{inmessage_h}=\&EraOmnix_Mult_InMessage;
++$plugin_data{$PLUGIN_NAME}->{will_take_h}=\&EraOmnix_Mult_WillTake;
++$plugin_data{$PLUGIN_NAME}->{default_prio}=$DEFAULT_PRIO;
++$plugin_data{$PLUGIN_NAME}->{version}=$PLUGIN_VERSION;
++$plugin_data{$PLUGIN_NAME}->{needs_reg}=1;
++
++sub EraOmnix_Mult_WillTake {
++        my $from=shift;
++        my $to_nr=shift; # if not provided, it means it asks for the service, w/o number served by it 
++        return (($to_nr?($to_nr =~ /$DEST_NUMBERS_REGEXP/):1)&&(exists($EraOmnix_Mult_accounts{$from})));
++};
++
++sub EraOmnix_Mult_PreConn {
++#	%EraOmnix_Mult_accounts=%{LoadXMLHash('accounts',$config{plugins}->{$PLUGIN_NAME}->{accounts_file},$PLUGIN_NAME)};
++	my $t=tie(%EraOmnix_Mult_accounts,"MLDBM::Sync",$config{plugins}->{$PLUGIN_NAME}->{accounts_file},O_CREAT|O_RDWR,0600);
++	log2($PLUGIN_NAME.": Ready.");
++};
++
++sub EraOmnix_Mult_InIQ {
++	my $iq_o=shift;
++	my $xmlns=shift;
++	my $query_o=$iq_o->GetQuery();
++	my $type=$iq_o->GetType();
++	my $from=$iq_o->GetFrom(); my $to=$iq_o->GetTo();
++	my $iq=new Net::Jabber::IQ;
++	$iq->SetFrom($to); $iq->SetTo($from); $iq->SetID($iq_o->GetID);
++	my $query=$iq->NewQuery($xmlns);
++
++	if ($xmlns eq 'jabber:iq:register') {
++		my $base_from=$from; $base_from=~s/\/.+$//g if ($base_from =~ /\//);
++		my $account=$EraOmnix_Mult_accounts{$base_from};
++		if ($type eq 'get') {
++			$iq->SetType('result');
++			$query->SetInstructions('Send a message to: +48TELNUMBER@'.$config{service_name}." to send an SMS.\n".
++				"You can add a contact like this to your roster.\n\n".
++				"Provide your Username and Password to ".$PLUGIN_NAME." gateway.\n".
++				"See http://www.eraomnix.pl/pl/between-us/send-sms-mms for info.\n\n".
++				"Note: x:data compilant client allows setting more options.");
++			$query->SetUsername( ($account?$account->{username}:'') );
++			$query->SetPassword('');
++			# x:data ...
++			my $xd=( (Net::Jabber->VERSION>1.30) ? new Net::Jabber::Stanza("x") : new Net::Jabber::X );
++			$xd->SetXMLNS('jabber:x:data');
++			$xd->SetData(instructions=>'Send a message to: +48TELNUMBER@'.$config{service_name}." to send an SMS.\n".
++					"You can add a contact like this to your roster.\n".
++					"Provide your Username and Password to ".$PLUGIN_NAME." gateway.\n".
++					"See http://www.eraomnix.pl/pl/between-us/send-sms-mms for info.\n".
++					"You can configure additional options too. When changing options, remember to provide ".
++					"your password!",
++				title=>"$PLUGIN_NAME Registration",
++				type=>'form');
++			$xd->AddField(type=>'text-single',var=>'username',label=>'User name',
++				value=>($account?$account->{username}:''));
++			$xd->AddField(type=>'text-private',var=>'password',label=>'Password (!) ');
++			$xd->AddField(type=>'boolean',var=>'mms',label=>'MMS',
++				value=>($account->{mms}?$account->{mms}:0));
++			$query->AddX($xd);
++			# ... x:data
++			$Connection->Send($iq);
++		} elsif ($type eq 'set') {
++			# x:data ...
++			my @xd=$query_o->GetX('jabber:x:data'); my %f;
++			if ($#xd>-1) {
++				foreach my $x ($xd[0]->GetFields()) { $f{$x->GetVar()}=$x->GetValue(); };
++			} else {
++				$f{username}=$query_o->GetUsername(); $f{password}=$query_o->GetPassword();
++				$f{mms}=0;
++			};
++			# ... x:data
++			if (($f{username} eq '')&&($f{password} eq '')) {
++				SendPluginPresencesToUser($PLUGIN_NAME,'unavailable',$from);
++				delete $EraOmnix_Mult_accounts{$base_from};
++			} else {
++				for my $i (qw(username password mms)) { $account->{$i}=$f{$i}; };
++				$EraOmnix_Mult_accounts{$base_from}=$account;
++				SendPluginPresencesToUser($PLUGIN_NAME,'available',$from);
++				PushAgentToUsersRoster($from); # important in any plugin which needs registration!
++			};
++#			SaveXMLHash(\%EraOmnix_Mult_accounts,'accounts',$config{plugins}->{$PLUGIN_NAME}->{accounts_file},$PLUGIN_NAME);
++			$iq->SetType('result');
++			$Connection->Send($iq);
++		};
++	};
++};
++
++my %EraOmnix_Mult_errmsgs=(
++	'0'=>'wysy³ka bez b³êdu',
++	'1'=>'awaria systemu',
++	'2'=>'u¿ytkownik nieautoryzowany',
++	'3'=>'dostêp zablokowany',
++	'5'=>'b³±d sk³adni',	
++	'7'=>'wyczerpany limit SMS',
++	'8'=>'b³êdny adres odbiorcy SMS',
++	'9'=>'wiadomo¶æ zbyt d³uga',
++	'10'=>'brak wymaganej liczby ¿etonów'
++);
++
++sub EraOmnix_Mult_InMessage {
++	my $message_o=shift;
++	my $type=shift;
++	my $to=$message_o->GetTo(); my $from=$message_o->GetFrom();
++	my $message=new Net::Jabber::Message;
++	$message->SetTo($from); $message->SetFrom($to); $message->SetType($type);
++	my $SN=$config{service_name};
++	my $PN=$SN."/".$PLUGIN_NAME;
++	my $base_from=$from; $base_from=~s/\/.+$//g if ($base_from =~ /\//);
++	my $nr=$to; $nr=~s/@.+$//g;
++	return unless ($to =~ /$PN$/); # shouldn't happen
++
++	my $account=$EraOmnix_Mult_accounts{$base_from};
++
++	# the guts:
++
++	my $result_message="";
++	$nr=~s/\+//g;
++	my $sig=$base_from; $sig=~s/@.+$//g;
++
++	my $ua=new LWP::UserAgent;
++	$ua->agent("Mozilla/3.0 (X11, I, Linux 2.4.0 i486"); # ;)
++	$ua->timeout(30); # quickly please!
++	$ua->no_proxy('www.eraomnix.pl');
++
++	my $r=$ua->post('http://www.eraomnix.pl/msg/api/do/tinker/omnix',[
++		success=>'http://success/',
++		failure=>'http://failure/',
++		login=>$account->{username},
++		password=>$account->{password},
++		number=>$nr,
++		message=>convert('utf8','latin2',$message_o->GetBody()),
++        mms=>( ($account->{mms} =~ /(true|yes|1)/) ? "true" : "false" ),
++		]);
++	if ($r->status_line =~ /302 Moved/) {
++		my $loc=$r->header("Location");
++		if ($loc =~ /\/success\//) {
++			my $err=($loc =~ /X-ERA-error/)?$loc:""; $err=~s/^.+X-ERA-error=//g; $err=~s/\&.+$//g;
++			my $tok=($loc =~ /X-ERA-tokens/)?$loc:""; $tok=~s/^.+X-ERA-tokens=//g; $tok=~s/\&.+$//g;
++			my $cost=($loc =~ /X-ERA-cost/)?$loc:""; $cost=~s/^.+X-ERA-cost=//g; $cost=~s/\&.+$//g;
++			$result_message=convert('latin2','utf8',"SMS wys³any".
++				(($err ne '')?", status: ".$EraOmnix_Mult_errmsgs{$err}:"").
++				(($tok ne '')?", pozosta³o ¿etonów: $tok":"").
++				(($cost ne '')?", zu¿yte ¿etony: $cost":""));
++		} else {
++			my $err=($loc =~ /X-ERA-error/)?$loc:""; $err=~s/^.+X-ERA-error=//g; $err=~s/\&.+$//g;
++			my $tok=($loc =~ /X-ERA-tokens/)?$loc:""; $tok=~s/^.+X-ERA-tokens=//g; $tok=~s/\&.+$//g;
++			my $cost=($loc =~ /X-ERA-cost/)?$loc:""; $cost=~s/^.+X-ERA-cost=//g; $cost=~s/\&.+$//g;
++			$result_message=convert('latin2','utf8',"B³±d wysy³ania".
++				(($err ne '')?", status: ".$EraOmnix_Mult_errmsgs{$err}:"").
++				(($tok ne '')?", pozosta³o ¿etonów: $tok":"").
++				(($cost ne '')?", zu¿yte ¿etony: $cost":""));
++		};
++	} else {
++		$result_message="HTTP Error";
++	};
++
++	$message->SetBody("www.eraomnix.pl: ".$result_message);
++	$Connection->Send($message);
++};
++
++1;
++
+diff -ruN asa-0.1.7/plugins/EraOmnix_Podstawowa.pl asa-svn-26-05-2007/plugins/EraOmnix_Podstawowa.pl
+--- asa-0.1.7/plugins/EraOmnix_Podstawowa.pl	2005-08-08 13:06:50.000000000 +0200
++++ asa-svn-26-05-2007/plugins/EraOmnix_Podstawowa.pl	2007-05-26 09:25:26.000000000 +0200
+@@ -2,12 +2,13 @@
+ use LWP::UserAgent;
+ use HTTP::Request::Common qw(GET POST);
+ use HTTP::Response;
++use HTTP::Cookies; 
+ use Unicode::Lite;
+ 
+ my $PLUGIN_NAME			= "EraOmnix_Podstawowa";
+-my $PLUGIN_VERSION		= "0.3";
++my $PLUGIN_VERSION		= "0.4-20050930-kg";
+ my $DEFAULT_PRIO		= 4;
+-my $DEST_NUMBERS_REGEXP		=  '^\+48(88[80]|60[24680]|69[24680]|66[0248])'; # needed linke this in // good numberz?
++my $DEST_NUMBERS_REGEXP	= '^\+48(88[80]|60[24680]|69[24680]|66[02468])'; # needed linke this in // good numberz?
+ 
+ use vars qw ( %EraOmnix_Podst_accounts );
+ 
+@@ -27,7 +28,7 @@
+ 
+ sub EraOmnix_Podst_WillTake {
+         my $from=shift;
+-        my $to_nr=shift; # if not provided, it means it asks for the service, w/o number served by it 
++        my $to_nr=shift; # if not provided, it means it asks for the service, w/o number served by it
+         return (($to_nr?($to_nr =~ /$DEST_NUMBERS_REGEXP/):1)&&(exists($EraOmnix_Podst_accounts{$from})));
+ };
+ 
+@@ -55,7 +56,7 @@
+ 			$query->SetInstructions('Send a message to: +48TELNUMBER@'.$config{service_name}." to send an SMS.\n".
+ 				"You can add a contact like this to your roster.\n\n".
+ 				"Provide your Username (48xxxxxxxxx) and Password to ".$PLUGIN_NAME." gateway.\n".
+-				"See http://www.eraomnix.pl/sms for info.\n\n".
++				"See http://www.eraomnix.pl/sms for info.\n\n".                
+ 				"Note: x:data compilant client allows setting more options.");
+ 			$query->SetUsername( ($account?$account->{username}:'') );
+ 			$query->SetPassword('');
+@@ -95,7 +96,7 @@
+ 			} else {
+ 				for my $i (qw(username password contact signature)) { $account->{$i}=$f{$i}; };
+ 				$EraOmnix_Podst_accounts{$base_from}=$account;
+-				SendPluginPresencesToUser($PLUGIN_NAME,'available',$from);
++                SendPluginPresencesToUser($PLUGIN_NAME,'available',$from);
+ 				PushAgentToUsersRoster($from); # important in any plugin which needs registration!
+ 			};
+ #			SaveXMLHash(\%EraOmnix_Podst_accounts,'accounts',$config{plugins}->{$PLUGIN_NAME}->{accounts_file},$PLUGIN_NAME);
+@@ -110,7 +111,7 @@
+ 	'1'=>'awaria systemu',
+ 	'2'=>'u¿ytkownik nieautoryzowany',
+ 	'3'=>'dostêp zablokowany',
+-	'5'=>'b³±d sk³adni',	
++	'5'=>'b³±d sk³adni',
+ 	'7'=>'wyczerpany limit SMS',
+ 	'8'=>'b³êdny adres odbiorcy SMS',
+ 	'9'=>'wiadomo¶æ zbyt d³uga',
+@@ -129,51 +130,101 @@
+ 	my $nr=$to; $nr=~s/@.+$//g;
+ 	return unless ($to =~ /$PN$/); # shouldn't happen
+ 
+-	my $account=$EraOmnix_Podst_accounts{$base_from};
+-
+-	# the guts:
+-
+ 	my $result_message="";
+ 	$nr=~s/\+//g;
+ 	my $sig=$base_from; $sig=~s/@.+$//g;
+ 
+-	my $ua=new LWP::UserAgent;
+-	$ua->agent("Mozilla/3.0 (X11, I, Linux 2.4.0 i486"); # ;)
+-	$ua->timeout(30); # quickly please!
+-	$ua->no_proxy('www.eraomnix.pl');
+-
+-	my $r=$ua->post('http://www.eraomnix.pl/sms/do/extern/tinker/free/send',[
+-		login=>$account->{username},
+-		password=>$account->{password},
+-		success=>'http://success/',
+-		failure=>'http://failure/',
+-		number=>$nr,
+-		message=>convert('utf8','latin2',$message_o->GetBody()),
+-		signature=>( $account->{signature} ? $account->{signature} : $sig),
+-		contact=>( $account->{contact} ? $account->{contact} : "")
+-		]);
+-	if ($r->status_line =~ /302 Moved/) {
+-		my $loc=$r->header("Location");
+-		if ($loc =~ /\/success\//) {
+-			my $err=($loc =~ /X-ERA-error/)?$loc:""; $err=~s/^.+X-ERA-error=//g; $err=~s/\&.+$//g;
+-			my $cnt=($loc =~ /X-ERA-counter/)?$loc:""; $cnt=~s/^.+X-ERA-counter=//g; $cnt=~s/\&.+$//g;
+-			$result_message=convert('latin2','utf8',"SMS wys³any".
+-				(($err ne '')?", status: ".$EraOmnix_Podst_errmsgs{$err}:"").
+-				(($cnt ne '')?", pozosta³o smsów: $cnt":""));
+-		} else {
+-			my $err=($loc =~ /X-ERA-error/)?$loc:""; $err=~s/^.+X-ERA-error=//g; $err=~s/\&.+$//g;
+-			my $cnt=($loc =~ /X-ERA-counter/)?$loc:""; $cnt=~s/^.+X-ERA-counter=//g; $cnt=~s/\&.+$//g;
+-			$result_message=convert('latin2','utf8',"B³±d wysy³ania".
+-				(($err ne '')?", status: ".$EraOmnix_Podst_errmsgs{$err}:"").
+-				(($cnt ne '')?", pozosta³o smsów: $cnt":""));
+-		};
+-	} else {
+-		$result_message="HTTP Error";
+-	};
+-
+-	$message->SetBody("www.eraomnix.pl: ".$result_message);
++	my $account=$EraOmnix_Podst_accounts{$base_from};
++    
++    $result_message=sendSmsViaOmnix($account->{username}, $account->{password}, $nr, convert('utf8','latin2',$message_o->GetBody()), $sig);
++	$message->SetBody("www.eraomnix.pl: ".convert('latin2','utf8', $result_message));
+ 	$Connection->Send($message);
+ };
+ 
+-1;
++# credits:
++# Jacek Fiok <jfiok@jfiok.org>; http://sms.jfiok.org 
++# Piotr W³odarczyk <piotr@wlodarczyk.waw.pl> 
++sub sendSmsViaOmnix
++{
++	my ($login, $password, $number, $message, $sig) = @_;    
++
++    my $cookie_jar = HTTP::Cookies->new; 
++    my $ua = new LWP::UserAgent;
++    $ua->timeout(30);
++    $ua->agent("Mozilla/3.0 (X11, I, Linux 2.4.0 i486");
++    $ua->env_proxy();
++    $ua->cookie_jar($cookie_jar); 
++    push @{ $ua->requests_redirectable }, 'POST';
++    my $token;
++
++    # 1. get sms-index
++    my $res = $ua->request (GET 'http://www.eraomnix.pl/msg/user/sponsored/welcome.do');
++    return "B³±d przy otwieraniu formularza [1]" unless $res->is_success;
++    if ($res->content =~ /TOKEN\" value=\"(.*)\"/ ) { $token=$1;} 
++
++    # 2. send the POST login form
++    my $req = POST "http://www.eraomnix.pl/sso2/authenticate.do", [
++    	login => $login,
++        password => $password,
++        "org.apache.struts.taglib.html.TOKEN" => $token
++    ];
++
++    $res = $ua->request($req);
++    return "B³±d przy logowaniu - zerwane po³±czenie [2]" unless $res->is_success;
++    return "B³±d przy logowaniu - nieprawid³owe has³o [2]" unless $res->content =~ /Pozosta³o SMS/;
++
++    my $poczatek=0;
++    my $dlugosc=110;
++
++    my $wiadomosc=$message;
++    my $ilosc_smsow = 1; 
++    
++    if ((length($wiadomosc) % $dlugosc) != 0) { 
++        $ilosc_smsow = ((length($wiadomosc) - (length($wiadomosc) % $dlugosc)) / $dlugosc) + 1; 
++    } else {
++        $ilosc_smsow = length($wiadomosc) / $dlugosc;
++    }
++
++    # pêtla wysy³aj±ca po kawa³ku
++    for (my $i=1;$i<=$ilosc_smsow;$i++) 
++    {
++        $message=substr($wiadomosc,$poczatek,$dlugosc);
++        $poczatek += $dlugosc;
++
++        my $sms_zostalo = 666;
++        if ($res->content =~ /Pozosta.o SMS.w: \<b\>([0-9]+)\<\/b\>/) { $sms_zostalo = $1; }
++        return "Nie mogê odczytaæ ilo¶ci dostêpnych SMSów" if $sms_zostalo == 666;
++        return "Limit wiadomo¶ci na dzi¶ przekroczony" if $sms_zostalo == 0;
++    	
++        # 3. wyslij
++        if ($res->content =~ /TOKEN\" value=\"(.*)\"/ ) { $token=$1;} else { return "Nie widzê tokena!"; }
++        
++        $req = POST 'http://www.eraomnix.pl/msg/user/sponsored/sms.do', [
++        	"top.phoneReceiver" => $number,
++            "top.text"  => $message,
++            "org.apache.struts.taglib.html.TOKEN" => $token,
++            "top.signature"	=> $sig,
++            "top.characterLimit" => '99',
++            "send" => '0',
++            "mmsTab" => 'mmsTab',
++            "send_x" => '15',
++            "send_y" => '13'
++        ];
++
++        $res = $ua->request($req);
++        if (!($res->is_success)) { return "B³±d przy podgl±dzie wiadomo¶ci [3]"; }
++
++        # 4. czy sie wys³a³o (?).
++        my $sms_zostalo2 = 666;
++        if ($res->content =~ /Pozosta³o SMSów: \<b\>([0-9]+)\<\/b\>/) { $sms_zostalo2 = $1; }
++        if ($sms_zostalo2 == 666) { zakoncz ("Nie mogê odczytaæ ilo¶ci dostêpnych SMSów", 1); }
++        if ($sms_zostalo > $sms_zostalo2) 
++        {
++            return "Wszystko OK; pozosta³y limit wiadomo¶ci: ".$sms_zostalo2; 
++        } else {
++            return "Wiadomo¶æ wys³ana, ale STATUS NIEZNANY (pozosta³y limit: ".$sms_zostalo2.").";
++        }
++    }    
++}
+ 
++1;
+diff -ruN asa-0.1.7/plugins/EraOmnix_Sponsorowana.pl asa-svn-26-05-2007/plugins/EraOmnix_Sponsorowana.pl
+--- asa-0.1.7/plugins/EraOmnix_Sponsorowana.pl	1970-01-01 01:00:00.000000000 +0100
++++ asa-svn-26-05-2007/plugins/EraOmnix_Sponsorowana.pl	2007-05-26 09:25:33.000000000 +0200
+@@ -0,0 +1,175 @@
++use strict;
++use LWP::UserAgent;
++use HTTP::Request::Common qw(GET POST);
++use HTTP::Response;
++use Unicode::Lite;
++
++my $PLUGIN_NAME			= "EraOmnix_Sponsorowana";
++my $PLUGIN_VERSION		= "0.4-20060612-kg";
++my $DEFAULT_PRIO		= 4;
++my $DEST_NUMBERS_REGEXP		=  '^\+48(60[02468]|66[028]|69[2468]|78[78]|88[0689])'; # needed linke this in // good numberz?
++# Era/TT: 600, 602, 604, 606, 608, 660, 662, 668, 692, 694, 696, 698, 788
++# Heyah: 880, 886, 888, 889, 788
++
++use vars qw ( %EraOmnix_Spons_accounts );
++
++# RULES:
++# 1. ALWAYS, ALWAYS, ALWAYS create new presence/message/iq
++# 2. Create handlers, plugin is named ser.vi.ce/Plugin
++# 3. Provide ALL info into %plugin_data
++
++RegisterEvent('iq','^'.$config{service_name}."/".$PLUGIN_NAME.'$',\&EraOmnix_Spons_InIQ); # for registration
++RegisterEvent('pre_connect','.+',\&EraOmnix_Spons_PreConn); # for loading some data ;)
++
++$plugin_data{$PLUGIN_NAME}->{inmessage_h}=\&EraOmnix_Spons_InMessage;
++$plugin_data{$PLUGIN_NAME}->{will_take_h}=\&EraOmnix_Spons_WillTake;
++$plugin_data{$PLUGIN_NAME}->{default_prio}=$DEFAULT_PRIO;
++$plugin_data{$PLUGIN_NAME}->{version}=$PLUGIN_VERSION;
++$plugin_data{$PLUGIN_NAME}->{needs_reg}=1;
++
++sub EraOmnix_Spons_WillTake {
++        my $from=shift;
++        my $to_nr=shift; # if not provided, it means it asks for the service, w/o number served by it 
++        return (($to_nr?($to_nr =~ /$DEST_NUMBERS_REGEXP/):1)&&(exists($EraOmnix_Spons_accounts{$from})));
++};
++
++sub EraOmnix_Spons_PreConn {
++#	%EraOmnix_Spons_accounts=%{LoadXMLHash('accounts',$config{plugins}->{$PLUGIN_NAME}->{accounts_file},$PLUGIN_NAME)};
++	my $t=tie(%EraOmnix_Spons_accounts,"MLDBM::Sync",$config{plugins}->{$PLUGIN_NAME}->{accounts_file},O_CREAT|O_RDWR,0600);
++	log2($PLUGIN_NAME.": Ready.");
++};
++
++sub EraOmnix_Spons_InIQ {
++	my $iq_o=shift;
++	my $xmlns=shift;
++	my $query_o=$iq_o->GetQuery();
++	my $type=$iq_o->GetType();
++	my $from=$iq_o->GetFrom(); my $to=$iq_o->GetTo();
++	my $iq=new Net::Jabber::IQ;
++	$iq->SetFrom($to); $iq->SetTo($from); $iq->SetID($iq_o->GetID);
++	my $query=$iq->NewQuery($xmlns);
++
++	if ($xmlns eq 'jabber:iq:register') {
++		my $base_from=$from; $base_from=~s/\/.+$//g if ($base_from =~ /\//);
++		my $account=$EraOmnix_Spons_accounts{$base_from};
++		if ($type eq 'get') {
++			$iq->SetType('result');
++			$query->SetInstructions('Send a message to: +48TELNUMBER@'.$config{service_name}." to send an SMS.\n".
++				"You can add a contact like this to your roster.\n\n".
++				"Provide your Username (48xxxxxxxxx) and Password to ".$PLUGIN_NAME." gateway.\n".
++				"See http://www.eraomnix.pl/pl/between-us/send-sms-mms for info.\n\n".
++				"Note: x:data compilant client allows setting more options.");
++			$query->SetUsername( ($account?$account->{username}:'') );
++			$query->SetPassword('');
++			# x:data ...
++			my $xd=( (Net::Jabber->VERSION>1.30) ? new Net::Jabber::Stanza("x") : new Net::Jabber::X );
++			$xd->SetXMLNS('jabber:x:data');
++			$xd->SetData(instructions=>'Send a message to: +48TELNUMBER@'.$config{service_name}." to send an SMS.\n".
++					"You can add a contact like this to your roster.\n".
++					"Provide your Username and Password to ".$PLUGIN_NAME." gateway.\n".
++					"See http://www.eraomnix.pl/pl/between-us/send-sms-mms for info.\n".
++					"You can configure additional options too. When changing options, remember to provide ".
++					"your password!",
++				title=>"$PLUGIN_NAME Registration",
++				type=>'form');
++			$xd->AddField(type=>'text-single',var=>'username',label=>'User name',
++				value=>($account?$account->{username}:''));
++			$xd->AddField(type=>'text-private',var=>'password',label=>'Password (!) ');
++			$query->AddX($xd);
++			$Connection->Send($iq);
++		} elsif ($type eq 'set') {
++			# x:data ...
++			my @xd=$query_o->GetX('jabber:x:data'); my %f;
++			if ($#xd>-1) {
++				foreach my $x ($xd[0]->GetFields()) { $f{$x->GetVar()}=$x->GetValue(); };
++			} else {
++				$f{username}=$query_o->GetUsername(); $f{password}=$query_o->GetPassword();
++			};
++			# ... x:data
++			if (($f{username} eq '')&&($f{password} eq '')) {
++				SendPluginPresencesToUser($PLUGIN_NAME,'unavailable',$from);
++				delete $EraOmnix_Spons_accounts{$base_from};
++			} else {
++				for my $i (qw(username password)) { $account->{$i}=$f{$i}; };
++				$EraOmnix_Spons_accounts{$base_from}=$account;
++				SendPluginPresencesToUser($PLUGIN_NAME,'available',$from);
++				PushAgentToUsersRoster($from); # important in any plugin which needs registration!
++			};
++#			SaveXMLHash(\%EraOmnix_Spons_accounts,'accounts',$config{plugins}->{$PLUGIN_NAME}->{accounts_file},$PLUGIN_NAME);
++			$iq->SetType('result');
++			$Connection->Send($iq);
++		};
++	};
++};
++
++my %EraOmnix_Spons_errmsgs=(
++	'0'=>'wysy³ka bez b³êdu',
++	'1'=>'awaria systemu',
++	'2'=>'u¿ytkownik nieautoryzowany',
++	'3'=>'dostêp zablokowany',
++	'5'=>'b³±d sk³adni',	
++	'7'=>'wyczerpany limit SMS',
++	'8'=>'b³êdny adres odbiorcy SMS',
++	'9'=>'wiadomo¶æ zbyt d³uga',
++	'10'=>'brak wymaganej liczby ¿etonów'
++);
++
++sub EraOmnix_Spons_InMessage {
++	my $message_o=shift;
++	my $type=shift;
++	my $to=$message_o->GetTo(); my $from=$message_o->GetFrom();
++	my $message=new Net::Jabber::Message;
++	$message->SetTo($from); $message->SetFrom($to); $message->SetType($type);
++	my $SN=$config{service_name};
++	my $PN=$SN."/".$PLUGIN_NAME;
++	my $base_from=$from; $base_from=~s/\/.+$//g if ($base_from =~ /\//);
++	my $nr=$to; $nr=~s/@.+$//g;
++	return unless ($to =~ /$PN$/); # shouldn't happen
++
++	my $account=$EraOmnix_Spons_accounts{$base_from};
++
++	# the guts:
++
++	my $result_message="";
++	$nr=~s/\+//g;
++	my $sig=$base_from; $sig=~s/@.+$//g;
++
++	my $ua=new LWP::UserAgent;
++	$ua->agent("Mozilla/3.0 (X11, I, Linux 2.4.0 i486"); # ;)
++	$ua->timeout(30); # quickly please!
++	$ua->no_proxy('www.eraomnix.pl');
++
++	my $r=$ua->post('http://www.eraomnix.pl/msg/api/do/tinker/sponsored',[
++		success=>'http://success/',
++		failure=>'http://failure/',
++		login=>$account->{username},
++		password=>$account->{password},
++		number=>$nr,
++		message=>convert('utf8','latin2',$message_o->GetBody()),
++        mms=>0,
++		]);
++	if ($r->status_line =~ /302 Moved/) {
++		my $loc=$r->header("Location");
++		if ($loc =~ /\/success\//) {
++			my $err=($loc =~ /X-ERA-error/)?$loc:""; $err=~s/^.+X-ERA-error=//g; $err=~s/\&.+$//g;
++			my $cnt=($loc =~ /X-ERA-counter/)?$loc:""; $cnt=~s/^.+X-ERA-counter=//g; $cnt=~s/\&.+$//g;
++			$result_message=convert('latin2','utf8',"SMS wys³any".
++				(($err ne '')?", status: ".$EraOmnix_Spons_errmsgs{$err}:"").
++				(($cnt ne '')?", pozosta³o smsów: $cnt":""));
++		} else {
++			my $err=($loc =~ /X-ERA-error/)?$loc:""; $err=~s/^.+X-ERA-error=//g; $err=~s/\&.+$//g;
++			my $cnt=($loc =~ /X-ERA-counter/)?$loc:""; $cnt=~s/^.+X-ERA-counter=//g; $cnt=~s/\&.+$//g;
++			$result_message=convert('latin2','utf8',"B³±d wysy³ania".
++				(($err ne '')?", status: ".$EraOmnix_Spons_errmsgs{$err}:"").
++				(($cnt ne '')?", pozosta³o smsów: $cnt":""));
++		};
++	} else {
++		$result_message="HTTP Error";
++	};
++
++	$message->SetBody("www.eraomnix.pl: ".$result_message);
++	$Connection->Send($message);
++};
++
++1;
++
+diff -ruN asa-0.1.7/plugins/MiastoPlusa.pl asa-svn-26-05-2007/plugins/MiastoPlusa.pl
+--- asa-0.1.7/plugins/MiastoPlusa.pl	2005-04-22 12:24:35.000000000 +0200
++++ asa-svn-26-05-2007/plugins/MiastoPlusa.pl	2007-05-26 09:25:47.000000000 +0200
+@@ -5,9 +5,9 @@
+ use Unicode::Lite;
+ 
+ my $PLUGIN_NAME			= "MiastoPlusa";
+-my $PLUGIN_VERSION		= "0.7";
++my $PLUGIN_VERSION		= "0.7-20060612-kg";
+ my $DEFAULT_PRIO		= 2;
+-my $DEST_NUMBERS_REGEXP		=  '^\+48(88[07-9]|60[0-9]|69[0-9]|50[0-9]|66[0-9])'; # needed like this in //
++my $DEST_NUMBERS_REGEXP		=  '^\+[0-9]+';
+ 
+ use vars qw ( %MiastoPlusa_accounts );
+ 
+diff -ruN asa-0.1.7/plugins/OrangeMbox.pl asa-svn-26-05-2007/plugins/OrangeMbox.pl
+--- asa-0.1.7/plugins/OrangeMbox.pl	1970-01-01 01:00:00.000000000 +0100
++++ asa-svn-26-05-2007/plugins/OrangeMbox.pl	2007-05-26 09:25:52.000000000 +0200
+@@ -0,0 +1,225 @@
++use strict;
++use LWP::UserAgent;
++use HTTP::Request::Common qw(GET POST);
++use HTTP::Response;
++use Crypt::SSLeay; # warn NOW, not when logging in
++use Unicode::Lite;
++use HTTP::Cookies;
++
++
++my $PLUGIN_NAME			= "OrangeMbox";
++my $PLUGIN_VERSION		= "0.5-20070501-kg";
++my $DEFAULT_PRIO		= 3;
++my $DEST_NUMBERS_REGEXP		=  '^\+[0-9]+'; # needed linke this in //, BUT it's not for everyone (only ideowcy maj\xc4\x85 dowsz\xc4\x85d)
++
++use vars qw ( %OrangeMbox_accounts );
++
++# RULES:
++# 1. ALWAYS, ALWAYS, ALWAYS create new presence/message/iq
++# 2. Create handlers, plugin is named ser.vi.ce/Plugin
++# 3. Provide ALL info into %plugin_data
++
++RegisterEvent('iq','^'.$config{service_name}."/".$PLUGIN_NAME.'$',\&OrangeMbox_InIQ); # for registration
++RegisterEvent('pre_connect','.+',\&OrangeMbox_PreConn); # for loading some data ;)
++
++$plugin_data{$PLUGIN_NAME}->{inmessage_h}=\&OrangeMbox_InMessage;
++$plugin_data{$PLUGIN_NAME}->{will_take_h}=\&OrangeMbox_WillTake;
++$plugin_data{$PLUGIN_NAME}->{default_prio}=$DEFAULT_PRIO;
++$plugin_data{$PLUGIN_NAME}->{version}=$PLUGIN_VERSION;
++$plugin_data{$PLUGIN_NAME}->{needs_reg}=1;
++
++sub OrangeMbox_WillTake {
++        my $from=shift;
++        my $to_nr=shift; # if not provided, it means it asks for the service, w/o number served by it 
++        return (($to_nr?($to_nr =~ /$DEST_NUMBERS_REGEXP/):1)&&(exists($OrangeMbox_accounts{$from})));
++};
++
++sub OrangeMbox_PreConn {
++#	%OrangeMbox_accounts=%{LoadXMLHash('accounts',$config{plugins}->{$PLUGIN_NAME}->{accounts_file},$PLUGIN_NAME)};
++	my $t=tie(%OrangeMbox_accounts,"MLDBM::Sync",$config{plugins}->{$PLUGIN_NAME}->{accounts_file},O_CREAT|O_RDWR,0600);
++#	$t->SyncCacheSize($config{numbers_tiehash_cache}) TODO eventually
++	log2($PLUGIN_NAME.": Ready.");
++};
++
++sub OrangeMbox_InIQ {
++	my $iq_o=shift;
++	my $xmlns=shift;
++	my $query_o=$iq_o->GetQuery();
++	my $type=$iq_o->GetType();
++	my $from=$iq_o->GetFrom(); my $to=$iq_o->GetTo();
++	my $iq=new Net::Jabber::IQ;
++	$iq->SetFrom($to); $iq->SetTo($from); $iq->SetID($iq_o->GetID);
++	my $query=$iq->NewQuery($xmlns);
++
++	if ($xmlns eq 'jabber:iq:register') {
++		my $base_from=$from; $base_from=~s/\/.+$//g if ($base_from =~ /\//);
++		if ($type eq 'get') {
++			$iq->SetType('result');
++			$query->SetInstructions('Send a message to: +48TELNUMBER@'.$config{service_name}." to send an SMS.\n".
++				"You can add a contact like this to your roster.\n\n".
++				"Provide your Username and Password to ".$PLUGIN_NAME." gateway.\n".
++				"See http://www.orange.pl/ for info.");
++			$query->SetUsername( ($OrangeMbox_accounts{$base_from}?$OrangeMbox_accounts{$base_from}->{username}:'') );
++			$query->SetPassword('');
++			$Connection->Send($iq);
++		} elsif ($type eq 'set') {
++			if (($query_o->GetUsername() eq '')&&($query_o->GetPassword() eq '')) {
++				SendPluginPresencesToUser($PLUGIN_NAME,'unavailable',$from);
++				delete $OrangeMbox_accounts{$base_from};
++			} else {
++				my $a=$OrangeMbox_accounts{$base_from};
++				$a->{username}=$query_o->GetUsername();
++				$a->{password}=$query_o->GetPassword();
++				$OrangeMbox_accounts{$base_from}=$a;
++				SendPluginPresencesToUser($PLUGIN_NAME,'available',$from);
++				PushAgentToUsersRoster($from); # important in any plugin which needs registration!
++			};
++#			SaveXMLHash(\%OrangeMbox_accounts,'accounts',$config{plugins}->{$PLUGIN_NAME}->{accounts_file},$PLUGIN_NAME);
++			$iq->SetType('result');
++			$Connection->Send($iq);
++		};
++	};
++};
++
++sub OrangeMbox_InMessage {
++	my $message_o=shift;
++	my $type=shift;
++	my $to=$message_o->GetTo(); my $from=$message_o->GetFrom();
++	my $message=new Net::Jabber::Message;
++	$message->SetTo($from); $message->SetFrom($to); $message->SetType($type);
++	my $SN=$config{service_name};
++	my $PN=$SN."/".$PLUGIN_NAME;
++	my $base_from=$from; $base_from=~s/\/.+$//g if ($base_from =~ /\//);
++	my $nr=$to; $nr=~s/@.+$//g;
++	return unless ($to =~ /$PN$/); # shouldn't happen
++
++	# the guts:
++    
++    my $account = $OrangeMbox_accounts{$base_from};
++    my $result_message=sendSmsViaOrange($account->{username}, $account->{password}, $nr, $message_o->GetBody());
++	$message->SetBody("www.orange.pl: ".$result_message);
++	$Connection->Send($message);
++};
++
++# credits:
++# Jacek Fiok <jfiok@jfiok.org>; http://sms.jfiok.org
++# Spley <spley@home.pl>
++# Maciej Krzyzanowski <spider@popnet.pl>
++# Rafal 'RaV.' Matczak <rafal.matczak.orangutan.poczta.finemedia.pl>
++sub sendSmsViaOrange
++{
++    my ($login, $password, $number, $message) = @_;  
++
++    my $cookie_jar = HTTP::Cookies->new;
++    my $ua = new LWP::UserAgent;
++    $ua->timeout(30);
++    $ua->agent("Lynx/2.8.5rel.1 libwww-FM/2.14 SSL-MM/1.4.1 OpenSSL/0.9.7d");
++    $ua->no_proxy('www.orange.pl');
++    $ua->cookie_jar($cookie_jar);
++
++    my $res; my $req;
++
++    $number =~ s/^\+48//;
++    $number =~ s/^00//;
++
++    push @{ $ua->requests_redirectable }, 'POST';
++
++
++    # 1. get sms-index
++    $res = $ua->request (GET 'http://www.orange.pl/portal/map/map/signin');
++    return "B\xc5\x82\xc4\x85d przy otwieraniu formularza [1]" unless $res->is_success;
++
++    # 2. send the POST login form
++    # FIXME ssl!
++    $req = POST 'http://www.orange.pl/portal/map/map/homeo?_DARGS=/gear/static/home/login.jsp.loginFormId', [
++        '_dyncharset'=>'UTF-8',
++        '/amg/ptk/map/core/formhandlers/AdvancedProfileFormHandler.loginErrorURL'=>'/portal/map/map/signin',
++        '_D:/amg/ptk/map/core/formhandlers/AdvancedProfileFormHandler.loginErrorURL'=>' ',
++        '/amg/ptk/map/core/formhandlers/AdvancedProfileFormHandler.loginSuccessURL'=>'http://www.orange.pl/portal/map/map/message_box',
++        '_D:/amg/ptk/map/core/formhandlers/AdvancedProfileFormHandler.loginSuccessURL'=>' ',
++        '/amg/ptk/map/core/formhandlers/AdvancedProfileFormHandler.value.login'=>$login,
++        '_D:/amg/ptk/map/core/formhandlers/AdvancedProfileFormHandler.value.login'=>' ',
++        '/amg/ptk/map/core/formhandlers/AdvancedProfileFormHandler.value.password'=>$password,
++        '_D:/amg/ptk/map/core/formhandlers/AdvancedProfileFormHandler.value.password'=>' ',
++        '/amg/ptk/map/core/formhandlers/AdvancedProfileFormHandler.login.x'=>13,
++        '/amg/ptk/map/core/formhandlers/AdvancedProfileFormHandler.login.y'=>7,
++        '_D:/amg/ptk/map/core/formhandlers/AdvancedProfileFormHandler.login'=>' ',
++        '_DARGS'=>'/gear/static/home/login.jsp.loginFormId',
++    ];
++
++
++    $req->referer ("https://www.orange.pl/portal/map/map/idmp/sloin");
++    $res = $ua->request($req);
++    return "B\xc5\x82\xc4\x85d przy logowaniu [2]" unless $res->is_success;
++    return "B\xc5\x82\xc4\x85d przy logowaniu - nieprawid\xc5\x82owe has\xc5\x82o? [2]" unless $res->content =~ /zalogowany jako/;
++
++    #$req = GET 'http://www.orange.pl/portal/map/map/message_box';
++    #$res = $ua->request($req);
++
++    # Nie do konca odczytuje jeszcze ilosc pozostalych smsow (jesli sa jeszcze z doladowan)
++    # FIXME zrobic to ladniej..
++    my $sms_zostalo = 666;
++    my $cnt = $res->content;
++
++    my $l = index $cnt, 'div id="syndication"';  my $r = index $cnt, 'div id="mbox-menu"'; $cnt = substr($cnt, $l, $r-$l); 
++    $cnt =~ s/\s+//mg; $cnt =~ s/(?:<\/[^>]+>|<[^>]+>)//g; if ($cnt =~ /darmowe:([0-9]+)(zdo[^0-9]*([0-9]*))?/) 
++    {
++        $sms_zostalo = eval ($1);
++        $sms_zostalo += eval ($3) if $3;
++    }
++
++    return "Nie mog\xc4\x99 odczyta\xc4\x87 ilo\xc5\x9bci dost\xc4\x99pnych SMS\xc3\xb3w" if $sms_zostalo == 666;
++    return "Limit wiadomo\xc5\x9bci na ten miesi\xc4\x85c przekroczony" if $sms_zostalo == 0;
++
++    $res = $ua->request (GET 'http://www.orange.pl/portal/map/map/message_box?mbox_view=newsms&mbox_edit=new');
++    return "B\xc5\x82\xc4\x85d przy otwarciu formularza SMS [4]" unless $res->is_success;
++
++    # _DARGS=/gear/mapmessagebox/smsform.jsp na WWW jest i w GET string i w POST :)
++    $req = POST 'http://www.orange.pl/portal/map/map/message_box?_DARGS=/gear/mapmessagebox/smsform.jsp', [
++        '_dyncharset'=>'UTF-8',
++        '/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.type'=>'sms',
++        '_D:/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.type'=>' ',
++        'enabled'=>'false',
++        '/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.errorURL'=>'/portal/map/map/message_box?mbox_view=newsms',
++        '_D:/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.errorURL'=>' ',
++        '/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.successURL'=>'/portal/map/map/message_box?mbox_view=messageslist',
++        '_D:/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.successURL'=>' ',
++        #'smscounter'=>'1',
++        'counter'=>(640 - length($message)),
++        '/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.to'=>$number,
++        '_D:/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.to'=>' ',
++        '_D:/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.body'=>' ',
++        '/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.body'=>$message,
++        '/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.create.x'=>'57',
++        '/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.create.y'=>'12',
++        #'/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.create'=>'Wy%C5%9Blij',
++        '_D:/amg/ptk/map/messagebox/formhandlers/MessageFormHandler.create'=>' ',
++        '_DARGS'=>'/gear/mapmessagebox/smsform.jsp',
++    ];
++    $req->referer('http://www.orange.pl/portal/map/map/message_box?mbox_view=newsms&mbox_edit=new');
++    $res = $ua->request($req);
++
++    return "B\xc5\x82\xc4\x85d przy ostatecznym wysy\xc5\x82aniu SMS [5]" unless $res->is_success;
++
++    $cnt  = $res->content;
++    return $1 if $res->content =~ /div class="box-error">\s*<p>(.*)<\/p>/m;
++    
++    my $sms_zostalo2 = 666;
++
++    $l = index $cnt, 'div id="syndication"'; $r = index $cnt, 'div id="mbox-menu"'; $cnt = substr($cnt, $l, $r-$l); 
++    $cnt =~ s/\s+//mg; $cnt =~ s/(?:<\/[^>]+>|<[^>]+>)//g; if ($cnt =~ /darmowe:([0-9]+)(zdo[^0-9]*([0-9]*))?/) 
++    {
++        $sms_zostalo2 = eval ($1);
++        $sms_zostalo2 += eval ($3) if $3;
++    }
++    
++    return "Nie mog\xc4\x99 odczyta\xc4\x87 ilo\xc5\x9bci dost\xc4\x99pnych SMS\xc3\xb3w" if $sms_zostalo2 == 666;
++    if ($sms_zostalo > $sms_zostalo2) {
++        return "Wszystko OK; pozosta\xc5\x82y limit wiadomo\xc5\x9bci: ".$sms_zostalo2; 
++    } else {
++        return "Wiadomo\xc5\x9b\xc4\x87 wys\xc5\x82ana, ale STATUS NIEZNANY (pozosta\xc5\x82y limit: ".$sms_zostalo2.").";
++    }
++}
++
++1;
++
+diff -ruN asa-0.1.7/plugins/WwwPlusa.pl asa-svn-26-05-2007/plugins/WwwPlusa.pl
+--- asa-0.1.7/plugins/WwwPlusa.pl	2005-01-04 20:31:24.000000000 +0100
++++ asa-svn-26-05-2007/plugins/WwwPlusa.pl	2007-05-26 09:26:03.000000000 +0200
+@@ -5,9 +5,9 @@
+ use strict;
+ 
+ my $PLUGIN_NAME			= "WwwPlusa";
+-my $PLUGIN_VERSION		= "0.1";
++my $PLUGIN_VERSION		= "0.2-20051005-kg";
+ my $DEFAULT_PRIO		= 1;
+-my $DEST_NUMBERS_REGEXP		= '^\+48(60[13579]|69[1357]|66[13])'; # needed linke this in //
++my $DEST_NUMBERS_REGEXP		= '^\+48(6[069][13579])'; # needed linke this in //
+ 
+ # RULES:
+ # 1. ALWAYS, ALWAYS, ALWAYS create new presence/message/iq
