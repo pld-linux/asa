@@ -2,7 +2,6 @@
 # TODO:
 # - more clean init script ? (especially asa.sh) but usable,
 
-%include	/usr/lib/rpm/macros.perl
 Summary:	Jabber server component agent for sending SMS messages
 Summary(pl.UTF-8):	Komponent serwera Jabbera do wysyłania wiadomości SMS
 Name:		asa
