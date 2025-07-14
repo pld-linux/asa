@@ -47,11 +47,11 @@ modularnej budowie opartej na wtyczkach.
 
 %prep
 %setup -q
-%patch0 -p1
-%patch1 -p0
-%patch2 -p1
+%patch -P0 -p1
+%patch -P1 -p0
+%patch -P2 -p1
 %if "%{_lib}" == "lib64"
-%patch3 -p1
+%patch -P3 -p1
 %endif
 
 %install
